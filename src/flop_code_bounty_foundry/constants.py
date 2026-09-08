@@ -5,11 +5,11 @@ from pathlib import Path
 from flop_work_exchange.constants import (
     BENCH_DID,
     KNOWN_FAMILY_AGENTS,
-    KNOWN_FAMILY_DIDS as WORK_EXCHANGE_FAMILY_DIDS,
     ROUTER_DID,
     SCOUT_DID,
     SENTINEL_DID,
 )
+from flop_work_exchange.constants import KNOWN_FAMILY_DIDS as WORK_EXCHANGE_FAMILY_DIDS
 from flop_work_exchange.exceptions import IsolationError, SafetyError
 
 DEFAULT_PRODUCTION_STATE = Path.home() / ".flop_agents" / "code-bounty-foundry"

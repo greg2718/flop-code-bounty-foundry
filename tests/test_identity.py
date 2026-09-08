@@ -21,6 +21,9 @@ from flop_code_bounty_foundry.identity import (
 )
 
 TEST_PASSPHRASE = "foundry-test-pass!"  # noqa: S105
+WRONG_PASSPHRASE = "wrong-passphrase!!"  # noqa: S105
+MISMATCH_PASSPHRASE = "different-pass-ok!"  # noqa: S105
+SHORT_PASSPHRASE = "short"  # noqa: S105
 
 
 def _mint_production(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, object]:
@@ -67,7 +70,7 @@ def test_create_and_load_encrypted_production_identity(
         load_foundry_key(tmp_path)
 
     with pytest.raises(ValidationError, match="decrypt"):
-        load_foundry_key(tmp_path, passphrase="wrong-passphrase!!")
+        load_foundry_key(tmp_path, passphrase=WRONG_PASSPHRASE)
 
 
 def test_load_identity_meta_prefers_production_over_test(
@@ -107,14 +110,14 @@ def test_create_production_identity_gates(tmp_path: Path, monkeypatch: pytest.Mo
             state_dir=tmp_path,
             confirm=IDENTITY_CONFIRMATION,
             passphrase=TEST_PASSPHRASE,
-            passphrase_confirmation="different-pass-ok!",
+            passphrase_confirmation=MISMATCH_PASSPHRASE,
         )
     with pytest.raises(SafetyError, match="at least 16"):
         create_production_identity(
             state_dir=tmp_path,
             confirm=IDENTITY_CONFIRMATION,
-            passphrase="short",
-            passphrase_confirmation="short",
+            passphrase=SHORT_PASSPHRASE,
+            passphrase_confirmation=SHORT_PASSPHRASE,
         )
     create_production_identity(
         state_dir=tmp_path,
