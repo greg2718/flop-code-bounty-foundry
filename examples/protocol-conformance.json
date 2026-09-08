@@ -1,0 +1,53 @@
+{
+  "schema": "flop-code-bounty-foundry.spec.v0.1",
+  "title": "Protocol conformance checklist for paper receipts",
+  "bounty_type": "test_protocol_conformance",
+  "summary": "Produce a JSON checklist proving a bounty receipt bundle matches Work Exchange paper constraints.",
+  "repo_url": "https://github.com/greg2718/flop-work-exchange",
+  "local_path": ".",
+  "budget_flop": "6",
+  "acceptance": {
+    "summary": "conformance.json records required protocol checks as booleans.",
+    "items": [
+      "conformance.json exists",
+      "checks.receipt_schema is true",
+      "checks.paper_settlement is true",
+      "checks.inert_urls is true"
+    ],
+    "required_artifacts": ["conformance.json"]
+  },
+  "bench": {
+    "schema_version": "flop-bench.test-spec.v0.1",
+    "claim_id": "foundry-protocol-conformance",
+    "hypothesis": "The checklist JSON asserts paper-settlement protocol constraints.",
+    "requested_capabilities": ["file-existence", "json-path-equals"],
+    "mode": "passive",
+    "procedure": [
+      {"adapter": "file_exists", "path": "conformance.json"},
+      {
+        "adapter": "json_path_equals",
+        "path": "conformance.json",
+        "json_path": "checks.receipt_schema",
+        "equals": true
+      },
+      {
+        "adapter": "json_path_equals",
+        "path": "conformance.json",
+        "json_path": "checks.paper_settlement",
+        "equals": true
+      },
+      {
+        "adapter": "json_path_equals",
+        "path": "conformance.json",
+        "json_path": "checks.inert_urls",
+        "equals": true
+      }
+    ],
+    "assertions": [{"expect": "all steps pass"}],
+    "failure_conditions": ["checklist missing", "a required check is not true"],
+    "provenance": {
+      "source": "foundry example",
+      "maps_to": "flop-bench.test-spec.v0.1"
+    }
+  }
+}

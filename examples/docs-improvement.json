@@ -1,0 +1,41 @@
+{
+  "schema": "flop-code-bounty-foundry.spec.v0.1",
+  "title": "Improve Work Exchange operator-relationship docs",
+  "bounty_type": "improve_documentation",
+  "summary": "Add a short README section explaining paper settlement and same-operator rules.",
+  "repo_url": "https://github.com/greg2718/flop-work-exchange",
+  "local_path": ".",
+  "budget_flop": "8",
+  "notes": "repo_url is inert metadata. Do not clone or fetch it.",
+  "acceptance": {
+    "summary": "Documentation file exists and mentions paper settlement plus operator_relationship.",
+    "items": [
+      "A markdown file exists at README.md",
+      "The file mentions paper settlement",
+      "The file mentions operator_relationship"
+    ],
+    "required_artifacts": ["README.md"]
+  },
+  "bench": {
+    "schema_version": "flop-bench.test-spec.v0.1",
+    "claim_id": "foundry-docs-improvement",
+    "hypothesis": "The documentation deliverable records paper settlement rules.",
+    "requested_capabilities": ["file-existence", "utf8-text-containment"],
+    "mode": "passive",
+    "procedure": [
+      {"adapter": "file_exists", "path": "README.md"},
+      {"adapter": "text_contains", "path": "README.md", "text": "paper"},
+      {"adapter": "text_contains", "path": "README.md", "text": "operator_relationship"}
+    ],
+    "assertions": [{"expect": "all steps pass"}],
+    "failure_conditions": [
+      "README.md is absent",
+      "README.md does not mention paper settlement",
+      "README.md does not mention operator_relationship"
+    ],
+    "provenance": {
+      "source": "foundry example",
+      "repo_url_is_inert_metadata": true
+    }
+  }
+}
