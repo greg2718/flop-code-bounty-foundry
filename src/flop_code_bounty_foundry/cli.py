@@ -16,7 +16,11 @@ from flop_code_bounty_foundry.constants import DEFAULT_PRODUCTION_STATE
 from flop_code_bounty_foundry.demo import run_demo
 from flop_code_bounty_foundry.exceptions import WorkExchangeError
 from flop_code_bounty_foundry.foundry import CodeBountyFoundry
-from flop_code_bounty_foundry.identity import create_test_identity, load_identity_meta
+from flop_code_bounty_foundry.identity import (
+    create_production_identity,
+    create_test_identity,
+    load_identity_meta,
+)
 from flop_code_bounty_foundry.models import load_spec_file
 
 
@@ -61,6 +65,10 @@ def build_parser() -> argparse.ArgumentParser:
     identity = sub.add_parser("identity", help="Foundry Ed25519 / did:key identity")
     identity_sub = identity.add_subparsers(dest="identity_cmd", required=True)
     identity_sub.add_parser("init", help="Create a test-only identity in --state-dir")
+    prod = identity_sub.add_parser(
+        "init-production", help="Gated production identity (encrypted PKCS8 PEM)"
+    )
+    prod.add_argument("--confirm", required=True)
     identity_sub.add_parser("show", help="Show public identity metadata")
 
     create = sub.add_parser("create-bounty", help="Sponsor posts a bounty spec")
@@ -164,6 +172,20 @@ def _dispatch(args: argparse.Namespace) -> int:
         state_dir = _require_state_dir(args)
         if args.identity_cmd == "init":
             _print_json(create_test_identity(state_dir))
+            return 0
+        if args.identity_cmd == "init-production":
+            import getpass
+
+            first = getpass.getpass("New FLOP Code Bounty Foundry identity passphrase: ")
+            second = getpass.getpass("Confirm passphrase: ")
+            _print_json(
+                create_production_identity(
+                    state_dir=state_dir,
+                    confirm=args.confirm,
+                    passphrase=first,
+                    passphrase_confirmation=second,
+                )
+            )
             return 0
         if args.identity_cmd == "show":
             _print_json(load_identity_meta(state_dir))

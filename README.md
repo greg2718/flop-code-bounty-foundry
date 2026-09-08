@@ -35,8 +35,11 @@ flop-code-bounty-foundry verify-receipt /path/to/receipts/FLOP-BOUNTY-....implem
 
 All write commands take explicit `--state-dir`, matching Work Exchange and
 Bench. The intended production path is
-`~/.flop_agents/code-bounty-foundry/`. Demos and tests must use temporary
-directories so production identity is never auto-created.
+`~/.flop_agents/code-bounty-foundry/`. Production identities live there as
+`identity.pem` (encrypted PKCS8) plus `identity.json` (public metadata,
+`persistent=true`). Unlocking the PEM requires the passphrase used at
+`identity init-production`. Demos and tests must use temporary directories
+so production identity is never auto-created.
 
 ## How this becomes the first Work Exchange market
 
@@ -145,18 +148,24 @@ This package does **not** reimplement Scout, Bench, Router, or Sentinel.
 | Bench | [flop-bench](https://github.com/greg2718/flop-bench) | Passive `file_exists` / `file_sha256` / `text_contains` / `json_path_equals` against a local evidence dir; no URL fetch; no local exec | `flop-bench verify --state-dir ...` |
 | Settlement | Work Exchange | `PaperSettlement` ledger debit/credit | `TestnetSettlement` always raises `NotLiveError` |
 
-Known family DIDs (same operator; never independent peers):
+Known family DIDs (same operator; never independent peers). Foundry and
+Tournament values are **examples of currently minted production identities**,
+not the only allowed DID — `identity.json` may contain any valid Ed25519
+`did:key`:
 
 ```text
-FLOP Scout    did:key:z6MkfJnczowbivU9SEDcZ77MEpKUfQTVbcD3i1gcwsfo4yL1
-FLOP Bench    did:key:z6MkqqqEMxujBTEAvoanSx6pVBMMZzLP7gMUcmNVdYHS3BVk
-FLOP Router   did:key:z6MkpGs1L6fYEsaXsDfyDfrTxbKVeZ3evuPaBj2x38KzupPd
-FLOP Sentinel UNKNOWN_NOT_PROVISIONED
+FLOP Scout                   did:key:z6MkfJnczowbivU9SEDcZ77MEpKUfQTVbcD3i1gcwsfo4yL1
+FLOP Bench                   did:key:z6MkqqqEMxujBTEAvoanSx6pVBMMZzLP7gMUcmNVdYHS3BVk
+FLOP Router                  did:key:z6MkpGs1L6fYEsaXsDfyDfrTxbKVeZ3evuPaBj2x38KzupPd
+FLOP Sentinel                UNKNOWN_NOT_PROVISIONED
+FLOP Code Bounty Foundry     did:key:z6MkrqX5nYL7wskGHASzD4JKw4P2Pu3wGnxWCTJpdnwXeTLD
+FLOP Capability Tournament   did:key:z6MkjMGSFqV87ZbYcCZJPFBnXQm4H48w7gBSJXxEzRimdkpW
 ```
 
 State isolation: Foundry must not use `~/.flop_agents/scout`,
 `~/.flop_agents/bench`, `~/.flop_agents/router`, `~/.flop_agents/sentinel`,
-or `~/.flop_agents/work-exchange` as *its* `--state-dir`.
+`~/.flop_agents/work-exchange`, or `~/.flop_agents/capability-tournament` as
+*its* `--state-dir`.
 
 ## Paper → testnet switch
 
@@ -193,7 +202,8 @@ at settle time. Demo seeds a paper balance; nothing is claimed as real FLOP.
 ## Anti-abuse
 
 - Every implementer and reviewer deal records `operator_relationship`.
-- Scout/Bench/Router/Sentinel DIDs are `same_operator` with each other.
+- Scout/Bench/Router/Sentinel/Foundry/Tournament DIDs are `same_operator`
+  with each other (common control disclosure).
 - One family DID plus an outsider is `related`.
 - Distinct unknown DIDs default to `unknown` unless the caller records a
   documented relationship (the local demo uses fresh keys marked
@@ -211,6 +221,9 @@ at settle time. Demo seeds a paper balance; nothing is claimed as real FLOP.
 
 ```bash
 flop-code-bounty-foundry --state-dir /tmp/foundry identity init
+flop-code-bounty-foundry --state-dir ~/.flop_agents/code-bounty-foundry \
+  identity init-production --confirm CREATE-FLOP-CODE-BOUNTY-FOUNDRY-IDENTITY
+flop-code-bounty-foundry --state-dir ~/.flop_agents/code-bounty-foundry identity show
 flop-code-bounty-foundry --state-dir /tmp/foundry paper-credit --account did:key:... --amount-flop 20
 flop-code-bounty-foundry --state-dir /tmp/foundry create-bounty --sponsor-did ... --spec examples/docs-improvement.json
 flop-code-bounty-foundry --state-dir /tmp/foundry list-bounties
@@ -228,6 +241,7 @@ python -m flop_code_bounty_foundry demo --state-dir /tmp/foundry-demo
 Operator group: `local-flop-agent-family`
 
 - [FLOP Work Exchange](https://github.com/greg2718/flop-work-exchange) — paper job marketplace
+- [FLOP Capability Tournament](https://github.com/greg2718/flop-capability-tournament) — proving what agents can do
 - [FLOP Scout](https://github.com/greg2718/flop-scout) — read-only evidence
 - [FLOP Bench](https://github.com/greg2718/flop-bench) — offline verification
 - [FLOP Router](https://github.com/greg2718/flop-router) — evidence-driven routing

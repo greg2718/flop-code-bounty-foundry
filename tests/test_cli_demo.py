@@ -71,8 +71,18 @@ def test_help_lists_required_commands() -> None:
         "settle",
         "show",
         "demo",
+        "identity",
     ):
         assert command in text
+    identity_help = io.StringIO()
+    try:
+        with redirect_stdout(identity_help):
+            main(["identity", "--help"])
+    except SystemExit as exc:
+        assert exc.code == 0
+    identity_text = identity_help.getvalue()
+    assert "init-production" in identity_text
+    assert "show" in identity_text
 
 
 def test_example_specs_load() -> None:
