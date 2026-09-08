@@ -5,14 +5,34 @@ from pathlib import Path
 import pytest
 from flop_work_exchange.policy import classify_operator_relationship
 
-from flop_code_bounty_foundry.constants import BENCH_DID, ROUTER_DID, SCOUT_DID
+from flop_code_bounty_foundry.constants import (
+    BENCH_DID,
+    FOUNDRY_DID,
+    ROUTER_DID,
+    SCOUT_DID,
+    TOURNAMENT_DID,
+)
 from flop_code_bounty_foundry.exceptions import PolicyError, SafetyError
 from tests.helpers import complete_to_verified, docs_spec, fresh_dids, make_foundry
 
 
 def test_family_dids_are_same_operator() -> None:
+    from flop_code_bounty_foundry.constants import KNOWN_FAMILY_DIDS
+
     assert classify_operator_relationship(SCOUT_DID, BENCH_DID) == "same_operator"
     assert classify_operator_relationship(SCOUT_DID, ROUTER_DID) == "same_operator"
+    assert (
+        classify_operator_relationship(
+            SCOUT_DID, FOUNDRY_DID, known_family_dids=KNOWN_FAMILY_DIDS
+        )
+        == "same_operator"
+    )
+    assert (
+        classify_operator_relationship(
+            FOUNDRY_DID, TOURNAMENT_DID, known_family_dids=KNOWN_FAMILY_DIDS
+        )
+        == "same_operator"
+    )
 
 
 def test_family_plus_outsider_is_related() -> None:

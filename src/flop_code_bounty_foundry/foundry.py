@@ -36,6 +36,7 @@ from flop_code_bounty_foundry.exchange_client import (
 from flop_code_bounty_foundry.identity import (
     ensure_test_identity,
     load_foundry_key,
+    load_identity_meta,
     require_did,
 )
 from flop_code_bounty_foundry.models import (
@@ -82,7 +83,10 @@ class CodeBountyFoundry:
         self.store = FoundryStore(config.resolved_state_dir())
         self.store.initialize()
         write_resolved_config(self.store.state_dir, config)
-        ensure_test_identity(self.store.state_dir)
+        try:
+            load_identity_meta(self.store.state_dir)
+        except ValidationError:
+            ensure_test_identity(self.store.state_dir)
         if config.settlement_backend == "testnet" and exchange is None:
             self.exchange: WorkExchangeClient = InProcessWorkExchangeClient(
                 self.store.state_dir,
@@ -106,7 +110,7 @@ class CodeBountyFoundry:
         return cls(load_config(state_dir, config_path))
 
     def foundry_did(self) -> str:
-        return str(ensure_test_identity(self.store.state_dir)["did"])
+        return str(load_identity_meta(self.store.state_dir)["did"])
 
     def credit_paper(self, account: str, amount_flop: str, reason: str = "paper-seed") -> None:
         self.exchange.credit_paper(account, amount_flop, reason)
