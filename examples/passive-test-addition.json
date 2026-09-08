@@ -1,0 +1,43 @@
+{
+  "schema": "flop-code-bounty-foundry.spec.v0.1",
+  "title": "Add a passive regression test for paper receipt fields",
+  "bounty_type": "write_test",
+  "summary": "Add a test module that documents required Work Exchange receipt fields without executing untrusted code.",
+  "repo_url": "https://github.com/greg2718/flop-code-bounty-foundry",
+  "local_path": "tests",
+  "budget_flop": "10",
+  "acceptance": {
+    "summary": "A test file exists and names the required receipt fields.",
+    "items": [
+      "tests/test_receipt_fields.py exists",
+      "The file lists payment_mode and settlement_status"
+    ],
+    "required_artifacts": ["tests/test_receipt_fields.py"]
+  },
+  "bench": {
+    "schema_version": "flop-bench.test-spec.v0.1",
+    "claim_id": "foundry-passive-test-addition",
+    "hypothesis": "The added test artifact exists and mentions required paper receipt fields.",
+    "requested_capabilities": ["file-existence", "utf8-text-containment"],
+    "mode": "passive",
+    "procedure": [
+      {"adapter": "file_exists", "path": "tests/test_receipt_fields.py"},
+      {
+        "adapter": "text_contains",
+        "path": "tests/test_receipt_fields.py",
+        "text": "payment_mode"
+      },
+      {
+        "adapter": "text_contains",
+        "path": "tests/test_receipt_fields.py",
+        "text": "settlement_status"
+      }
+    ],
+    "assertions": [{"expect": "all steps pass"}],
+    "failure_conditions": ["test file missing", "required field names absent"],
+    "provenance": {
+      "source": "foundry example",
+      "local_exec": false
+    }
+  }
+}
