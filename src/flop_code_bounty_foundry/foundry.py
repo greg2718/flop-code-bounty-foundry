@@ -14,7 +14,7 @@ from flop_work_exchange.policy import (
 )
 from flop_work_exchange.receipts import sign_receipt, verify_receipt
 
-from flop_code_bounty_foundry.adapters.bench import verify_bounty_bench
+from flop_code_bounty_foundry.adapters.factory import AdapterBundle, resolve_adapters
 from flop_code_bounty_foundry.config import FoundryConfig, write_resolved_config
 from flop_code_bounty_foundry.constants import (
     ADAPTER_PUBLISH_ACCOUNT,
@@ -78,6 +78,7 @@ class CodeBountyFoundry:
         config: FoundryConfig,
         *,
         exchange: WorkExchangeClient | None = None,
+        adapters: AdapterBundle | None = None,
     ) -> None:
         self.config = config
         self.store = FoundryStore(config.resolved_state_dir())
@@ -87,18 +88,41 @@ class CodeBountyFoundry:
             load_identity_meta(self.store.state_dir)
         except ValidationError:
             ensure_test_identity(self.store.state_dir)
+
+        def _lookup(job_id: str) -> Bounty | None:
+            for bounty in self.store.list_bounties():
+                if bounty.implementer_job_id == job_id:
+                    return bounty
+                if bounty.review and bounty.review.job_id == job_id:
+                    return bounty
+            return None
+
+        self.adapters = adapters or resolve_adapters(
+            config.adapters, bounty_lookup=_lookup
+        )
+        if getattr(self.adapters.bench, "lookup", None) is None:
+            self.adapters.bench.lookup = _lookup
+        self.bench = self.adapters.bench
         if config.settlement_backend == "testnet" and exchange is None:
             self.exchange: WorkExchangeClient = InProcessWorkExchangeClient(
                 self.store.state_dir,
                 settlement_backend="testnet",
                 policy=config.policy,
                 known_family_dids=config.known_family_dids,
+                scout=self.adapters.scout,
+                router=self.adapters.router,
+                sentinel=self.adapters.sentinel,
+                bench=self.adapters.exchange_bench,
             )
         elif exchange is None:
             self.exchange = InProcessWorkExchangeClient(
                 self.store.state_dir,
                 policy=config.policy,
                 known_family_dids=config.known_family_dids,
+                scout=self.adapters.scout,
+                router=self.adapters.router,
+                sentinel=self.adapters.sentinel,
+                bench=self.adapters.exchange_bench,
             )
         else:
             self.exchange = exchange
@@ -394,7 +418,7 @@ class CodeBountyFoundry:
             bounty.bench_notes = f"reviewer verdict {bounty.review.verdict}"
             self.store.save_bounty(bounty)
             return bounty
-        verdict = verify_bounty_bench(bounty, allow_local_exec=self.config.allow_local_exec)
+        verdict = self.bench.verify_bounty(bounty)
         bounty.bench_result = verdict.result
         bounty.bench_notes = verdict.notes
         if bounty.implementer_job_id:

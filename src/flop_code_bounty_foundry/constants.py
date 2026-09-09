@@ -4,9 +4,22 @@ from pathlib import Path
 
 from flop_work_exchange.constants import (
     BENCH_DID,
+    DEFAULT_SCOUT_CANDIDATE_LIMIT,
+    DEFAULT_SCOUT_SQLITE_TIMEOUT_SECONDS,
     KNOWN_FAMILY_AGENTS,
+    MAC_BENCH_REPO,
+    MAC_ROUTER_REPO,
+    MAC_SCOUT_REPO,
+    MAC_SENTINEL_REPO,
+    MAX_CLI_JSON_CHARS,
+    MAX_SCOUT_CANDIDATE_LIMIT,
     ROUTER_DID,
+    ROUTER_FIXTURE_RELATIVE,
+    ROUTER_V1_MAX_DB_BYTES,
     SCOUT_DID,
+    SCOUT_MAX_QUERY_DB_BYTES,
+    SCOUT_PROJECTION_FILENAMES,
+    SCOUT_WAREHOUSE_DB_NAME,
     SENTINEL_DID,
 )
 from flop_work_exchange.constants import KNOWN_FAMILY_DIDS as WORK_EXCHANGE_FAMILY_DIDS
@@ -35,6 +48,9 @@ LEGACY_SCOUT_STATE = Path.home() / ".flop_scout"
 FOUNDRY_FEE_ACCOUNT = "foundry-management-fees"
 BENCH_FEE_ACCOUNT = "bench-validation-fees"
 ADAPTER_PUBLISH_ACCOUNT = "adapter-publish-fees"
+
+# Foundry adapter env prefix (sibling Scout/Bench/Router/Sentinel wiring).
+ADAPTER_ENV_PREFIX = "FLOP_CBF_"
 
 BOUNTY_TYPES: tuple[str, ...] = (
     "add_feature",
@@ -94,21 +110,35 @@ def assert_not_production_auto_init(state_dir: Path) -> None:
 
 
 __all__ = [
+    "ADAPTER_ENV_PREFIX",
     "ADAPTER_PUBLISH_ACCOUNT",
     "BENCH_DID",
     "BENCH_FEE_ACCOUNT",
     "BENCH_STATE",
     "BOUNTY_TYPES",
     "DEFAULT_PRODUCTION_STATE",
+    "DEFAULT_SCOUT_CANDIDATE_LIMIT",
+    "DEFAULT_SCOUT_SQLITE_TIMEOUT_SECONDS",
     "FOUNDRY_DID",
     "FOUNDRY_FEE_ACCOUNT",
     "FOUNDRY_OPERATOR_GROUP",
     "KNOWN_FAMILY_AGENTS",
     "KNOWN_FAMILY_DIDS",
+    "MAC_BENCH_REPO",
+    "MAC_ROUTER_REPO",
+    "MAC_SCOUT_REPO",
+    "MAC_SENTINEL_REPO",
+    "MAX_CLI_JSON_CHARS",
+    "MAX_SCOUT_CANDIDATE_LIMIT",
     "ROUTER_DID",
+    "ROUTER_FIXTURE_RELATIVE",
     "ROUTER_STATE",
+    "ROUTER_V1_MAX_DB_BYTES",
     "SCOUT_DID",
+    "SCOUT_MAX_QUERY_DB_BYTES",
+    "SCOUT_PROJECTION_FILENAMES",
     "SCOUT_STATE",
+    "SCOUT_WAREHOUSE_DB_NAME",
     "SENTINEL_DID",
     "SENTINEL_STATE",
     "TOURNAMENT_DID",

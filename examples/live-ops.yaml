@@ -1,0 +1,47 @@
+payment_mode: paper
+settlement_backend: paper
+settlement_execution: DISABLED
+tclk_mode: SIMULATION_ONLY
+asset: FLOP
+allow_local_exec: false
+fees:
+  application_micro: 100000
+  author_micro: 200000
+  management_micro: 250000
+  bench_validation_micro: 50000
+  reviewer_micro: 1000000
+  adapter_publish_micro: 100000
+policy:
+  allow_same_operator_deals: true
+  same_operator_independent_reputation: false
+  same_operator_fee_volume_as_independent: false
+  allow_self_deals: false
+  treat_unknown_as_independent: false
+# Paper ops only. Local adapters never enable faucet/wallet/transfer.
+adapters:
+  scout_mode: local
+  bench_mode: local
+  router_mode: local
+  sentinel_mode: local
+  scout_repo: ~/dev/flop_scout_v02
+  scout_state_dir: ~/.flop_scout
+  # Raw ~/.flop_scout/observer.sqlite is a ~48–52GiB warehouse. GROUP BY
+  # across evidence_records hangs find_candidates even with LIMIT 25.
+  # Prefer a Scout projection (≤1GiB) or evidence JSONL. The local adapter
+  # refuses oversized warehouses (fail closed) instead of scanning them.
+  # If ~/.flop_scout/scout_projection.sqlite or projection.sqlite exists, it
+  # is picked up automatically. Otherwise set:
+  # scout_projection_db: ~/.flop_scout/scout_projection.sqlite
+  # scout_evidence_jsonl: /path/to/evidence.jsonl
+  scout_sqlite_timeout_seconds: 5
+  scout_candidate_limit: 25
+  bench_repo: ~/dev/flop_bench
+  bench_allow_local_exec: false
+  router_repo: ~/dev/flop-router
+  # Production live Router needs a Scout→Router projection ≤1GiB (V2),
+  # not the raw Scout observer.sqlite warehouse (~52GiB). Router V1
+  # consumer max is 1GiB.
+  # router_db: /path/to/router-projection.sqlite
+  # Synthetic paper-ops fixture bundled with flop-router:
+  router_fixture: ~/dev/flop-router/fixtures/evidence_consistency.jsonl
+  sentinel_path: ~/dev/flop_sentinel

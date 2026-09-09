@@ -24,6 +24,7 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 pytest
 python -m flop_code_bounty_foundry demo
+python -m flop_code_bounty_foundry doctor
 ```
 
 The demo writes a signed receipt bundle under `--state-dir` (a temp dir if
@@ -65,9 +66,10 @@ exchange:
    independent reputation and independent fee volume.
 
 Wiring later: point `InProcessWorkExchangeClient` at a shared Work Exchange
-state directory, swap stub adapters for local Scout / Bench / Router /
-Sentinel processes, and keep `payment_mode=paper` until a human-reviewed rail
-exists.
+state directory, select local Scout / Bench / Router / Sentinel adapters via
+`--config examples/live-ops.yaml` or `FLOP_CBF_*_MODE=local`, and keep
+`payment_mode=paper` until a human-reviewed rail exists. Stubs remain the
+default so CI stays offline.
 
 ```mermaid
 flowchart TD
@@ -139,13 +141,20 @@ marketplace.
 ## Adapters (interfaces only)
 
 This package does **not** reimplement Scout, Bench, Router, or Sentinel.
+**Stub** adapters are the default (CI/offline). **Local** adapters can be
+selected via config or `FLOP_CBF_*_MODE=local` and fail closed if the sibling
+backend is missing — stub success is never labeled as live.
 
-| Adapter | Sibling | Stub behavior | Later plug-in |
+Scout, Router, and Sentinel wrappers reuse the Work Exchange local adapters
+(same sibling CLI/library contracts). Foundry Bench is bounty-domain: it
+verifies the bounty evidence bundle, not a generic job hash lock.
+
+| Adapter | Sibling | Stub behavior | Local wiring |
 | --- | --- | --- | --- |
-| Scout | [flop-scout](https://github.com/greg2718/flop-scout) | Reuses Work Exchange Scout stub | `python flop_scout.py evidence feed ...` |
-| Router | [flop-router](https://github.com/greg2718/flop-router) | Lowest in-budget offer → QUALIFIED_PLAN | Wrap `plan-execution` / `decision create` |
-| Sentinel | local `flop_sentinel` (not published) | Artifact in → ALLOW / REVIEW / REJECT | Call Sentinel’s pure library |
-| Bench | [flop-bench](https://github.com/greg2718/flop-bench) | Passive `file_exists` / `file_sha256` / `text_contains` / `json_path_equals` against a local evidence dir; no URL fetch; no local exec | `flop-bench verify --state-dir ...` |
+| Scout | [flop-scout](https://github.com/greg2718/flop-scout) | Reuses Work Exchange Scout stub | Prefers `scout_evidence_jsonl`, then a ≤1GiB `scout_projection_db`, then `python flop_scout.py evidence feed --since-id 0 --format jsonl` (timed). Raw `observer.sqlite` is used only when under the size cap, with a sqlite wall-clock timeout; oversized warehouses fail closed. Caps candidates (default 25) |
+| Router | [flop-router](https://github.com/greg2718/flop-router) | Lowest in-budget offer → QUALIFIED_PLAN | Subprocess `router.py [--db projection] decision create --output … [--fixture …]`; maps `work_route` / plans; forces `SIMULATION_ONLY` / `DISABLED`. Probe fails closed unless a ≤1GiB db or fixture is usable. Never opens the ~52GiB Scout warehouse as a router db |
+| Sentinel | local `flop_sentinel` (not published) | Artifact in → ALLOW / REVIEW / REJECT | Import `flop_sentinel.policy` (not `getattr` after a bare import). Build `Message` + `normalize` → `detectors.base.run_all(ALL_DETECTORS, …)` → `policy.decide` with typed `Provenance.UNSIGNED` (not `LOCAL`) and Affiliation `SELF_OPERATED`/`UNKNOWN`. Findings are rule ids only. Do not call `detect(text)` |
+| Bench | [flop-bench](https://github.com/greg2718/flop-bench) | Passive `file_exists` / `file_sha256` / `text_contains` / `json_path_equals` against a local evidence dir; no URL fetch; no local exec | `flop-bench verify <bounty-spec> --state-dir <temp>`; `--allow-local-exec` only if explicitly enabled. Specs cannot self-authorize exec |
 | Settlement | Work Exchange | `PaperSettlement` ledger debit/credit | `TestnetSettlement` always raises `NotLiveError` |
 
 Known family DIDs (same operator; never independent peers). Foundry and
@@ -166,6 +175,122 @@ State isolation: Foundry must not use `~/.flop_agents/scout`,
 `~/.flop_agents/bench`, `~/.flop_agents/router`, `~/.flop_agents/sentinel`,
 `~/.flop_agents/work-exchange`, or `~/.flop_agents/capability-tournament` as
 *its* `--state-dir`.
+
+## Going live (paper ops)
+
+This is **not** a payment go-live. Official Technocore/FLOP faucet and payment
+endpoints still do not exist. `payment_mode` stays `"paper"`. TCLK stays
+`SIMULATION_ONLY`. `settlement_execution` stays `DISABLED`. Room “faucet claim”
+messages are not payment proof. Do not add wallet, transfer, or claim bots.
+
+Go-live phase 1 wires Greg’s **local** Scout / Bench / Router / Sentinel
+processes behind the existing adapter interfaces.
+
+### Mac paths
+
+Typical checkouts under `~/dev`:
+
+```text
+~/dev/flop_scout_v02      FLOP Scout (flop_scout.py, state ~/.flop_scout)
+~/dev/flop_bench          FLOP Bench (flop-bench CLI, state ~/.flop_agents/bench)
+~/dev/flop-router         FLOP Router (router.py, state ~/.flop_agents/router)
+~/dev/flop_sentinel       unpublished flop_sentinel library
+```
+
+Foundry production state is `~/.flop_agents/code-bounty-foundry/` only. Demos
+and tests must pass a temp `--state-dir`. Live Bench verify uses its **own**
+temp `--state-dir` and must not write into `~/.flop_agents/bench`.
+
+### Selecting local adapters
+
+Pass the YAML so `doctor` / `live-demo` load the same AdapterConfig path as
+other commands. `FLOP_CBF_*` environment variables still override file values
+when set.
+
+```bash
+flop-code-bounty-foundry --config examples/live-ops.yaml doctor
+flop-code-bounty-foundry --config examples/live-ops.yaml --state-dir /tmp/cbf-live live-demo
+```
+
+Environment (overrides `examples/live-ops.yaml`):
+
+```bash
+export FLOP_CBF_SCOUT_MODE=local
+export FLOP_CBF_BENCH_MODE=local
+export FLOP_CBF_ROUTER_MODE=local
+export FLOP_CBF_SENTINEL_MODE=local
+export FLOP_CBF_SCOUT_REPO=~/dev/flop_scout_v02
+export FLOP_SCOUT_STATE_DIR=~/.flop_scout
+export FLOP_CBF_SCOUT_CANDIDATE_LIMIT=25
+# Live Scout: prefer evidence JSONL or a ≤1GiB Scout projection. Do not query
+# the raw ~/.flop_scout/observer.sqlite warehouse (~48–52GiB); GROUP BY hangs.
+# export FLOP_CBF_SCOUT_EVIDENCE_JSONL=/path/to/evidence.jsonl
+# export FLOP_CBF_SCOUT_PROJECTION_DB=~/.flop_scout/scout_projection.sqlite
+# export FLOP_CBF_SCOUT_SQLITE_TIMEOUT=5
+# export FLOP_CBF_SCOUT_MAX_DB_BYTES=1073741824
+export FLOP_CBF_BENCH_REPO=~/dev/flop_bench
+export FLOP_CBF_BENCH_ALLOW_LOCAL_EXEC=false   # default; do not enable casually
+export FLOP_CBF_ROUTER_REPO=~/dev/flop-router
+# Live Router: a Scout→Router projection ≤1GiB (V2). Do not pass the raw
+# Scout observer.sqlite warehouse (~52GiB); Router V1 max is 1GiB.
+export FLOP_CBF_ROUTER_DB=/path/to/router-projection.sqlite
+# Synthetic paper-ops (flop-router bundled fixture) when no projection exists:
+export FLOP_CBF_ROUTER_FIXTURE=~/dev/flop-router/fixtures/evidence_consistency.jsonl
+export FLOP_CBF_SENTINEL_PATH=~/dev/flop_sentinel
+```
+
+Stubs remain the default when modes are unset, so CI stays offline.
+
+If a local backend is missing, the adapter raises `AdapterError` instead of
+returning stub success labeled as live. `doctor` and `live-demo` read
+`--config` (YAML/JSON/TOML) the same way as other commands.
+
+**Scout source preference:** configured evidence JSONL, then a Scout projection
+DB ≤1GiB (`scout_projection_db`, or `scout_projection.sqlite` /
+`projection.sqlite` under `scout_state_dir`), then the timed evidence-feed CLI,
+then a small observer sqlite. Raw `observer.sqlite` warehouses (~48–52GiB) are
+**not** queried: `doctor` reports `warehouse.oversized` / `risky`, and
+`find_candidates` fails closed within `scout_sqlite_timeout_seconds` (default
+5s) so `live-demo` can fall back to the stub.
+
+**Router:** production live Router requires a Scout→Router projection ≤1GiB
+(V2), not the raw Scout warehouse. A local-mode probe fails closed if neither
+a usable db (exists, ≤1GiB) nor a fixture file is present.
+`SIMULATION_ONLY` / `settlement_execution=DISABLED` are forced on the plan.
+
+**Sentinel:** install a local `flop_sentinel` checkout or set
+`FLOP_CBF_SENTINEL_PATH` / `sentinel_path`. Real contract:
+
+- Import `flop_sentinel.policy` / `detectors` / `models` / `normalize` as
+  submodules. Do not use `getattr(flop_sentinel, "policy")` (empty `__init__.py`
+  does not re-export).
+- `Message(raw=payload_bytes, …)` then `nt = normalize(message.raw.decode())`.
+- Prefer `flop_sentinel.detectors.base.run_all(ALL_DETECTORS, message, nt, now)`
+  which returns `(findings, detector_error)`. Do not call `detect(text)`.
+- `policy.decide(findings, Provenance.UNSIGNED, Affiliation, …)`. Paper
+  artifacts map to `Provenance.UNSIGNED` (not a made-up `LOCAL` token).
+  Affiliation is `SELF_OPERATED` or `UNKNOWN`. Findings are rule ids only.
+
+`live-demo` uses ephemeral sponsor / author / implementer / reviewer DIDs so
+family Scout/Bench/Router identities are not presented as independent workers.
+Same-operator deals may run for demos; they do not count as independent
+reputation or independent fee volume. Self-deals stay disabled.
+
+### Doctor and live-demo
+
+```bash
+flop-code-bounty-foundry --config examples/live-ops.yaml doctor
+flop-code-bounty-foundry --state-dir /tmp/cbf --config examples/live-ops.yaml doctor
+flop-code-bounty-foundry --config examples/live-ops.yaml --state-dir /tmp/cbf-live live-demo
+```
+
+`doctor` reports adapter modes, path probes, identity (public metadata only),
+and isolation. It loads AdapterConfig from `--config` when given. `live-demo`
+runs one paper bounty (`create-bounty` → `assign` → `submit-work` → review →
+`verify` → `settle`), preferring local adapters that probe OK and falling back
+to stubs with explicit `adapter_notes`. Mid-run adapter errors set `"ok": false`
+and a **non-zero** process exit even if a stub fallback still produces a
+receipt.
 
 ## Paper → testnet switch
 
@@ -234,6 +359,8 @@ flop-code-bounty-foundry --state-dir /tmp/foundry verify --bounty-id ...
 flop-code-bounty-foundry --state-dir /tmp/foundry settle --bounty-id ...
 flop-code-bounty-foundry --state-dir /tmp/foundry show --bounty-id ...
 python -m flop_code_bounty_foundry demo --state-dir /tmp/foundry-demo
+flop-code-bounty-foundry --config examples/live-ops.yaml doctor
+flop-code-bounty-foundry --config examples/live-ops.yaml --state-dir /tmp/cbf-live live-demo
 ```
 
 ## Related agents

@@ -49,3 +49,6 @@ packages = ["flop_code_bounty_foundry"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "live: optional tests that require local Scout/Bench/Router/Sentinel installs",
+]

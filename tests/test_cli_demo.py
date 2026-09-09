@@ -71,6 +71,8 @@ def test_help_lists_required_commands() -> None:
         "settle",
         "show",
         "demo",
+        "live-demo",
+        "doctor",
         "identity",
     ):
         assert command in text
