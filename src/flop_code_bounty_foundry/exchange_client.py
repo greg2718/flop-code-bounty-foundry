@@ -10,6 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Literal, Protocol
 
+from flop_work_exchange.adapters import BenchAdapter, RouterAdapter, ScoutAdapter, SentinelAdapter
 from flop_work_exchange.adapters.bench import StubBenchAdapter
 from flop_work_exchange.adapters.router import StubRouterAdapter
 from flop_work_exchange.adapters.scout import StubScoutAdapter
@@ -29,6 +30,8 @@ from flop_work_exchange.models import (
     SentinelVerdict,
     WorkerCandidate,
 )
+
+from flop_code_bounty_foundry.adapters.bench import BountyBenchAdapter, LocalBountyBenchAdapter
 
 
 class WorkExchangeClient(Protocol):
@@ -105,10 +108,10 @@ class InProcessWorkExchangeClient:
         self,
         state_dir: Path,
         *,
-        bench: StubBenchAdapter | None = None,
-        scout: StubScoutAdapter | None = None,
-        router: StubRouterAdapter | None = None,
-        sentinel: StubSentinelAdapter | None = None,
+        bench: BenchAdapter | None = None,
+        scout: ScoutAdapter | None = None,
+        router: RouterAdapter | None = None,
+        sentinel: SentinelAdapter | None = None,
         settlement_backend: str = "paper",
         policy: PolicyConfig | None = None,
         known_family_dids: frozenset[str] | None = None,
@@ -130,12 +133,19 @@ class InProcessWorkExchangeClient:
             policy=policy or PolicyConfig(),
             known_family_dids=known_family_dids or KNOWN_FAMILY_DIDS,
         )
+        nested_bench: BenchAdapter
+        if bench is None or isinstance(bench, (BountyBenchAdapter, LocalBountyBenchAdapter)):
+            # Foundry Bench is bounty-domain; nested Exchange keeps WX hash-lock
+            # (stub or local flop-bench) rather than the bounty evidence adapter.
+            nested_bench = StubBenchAdapter()
+        else:
+            nested_bench = bench
         self._wx = WorkExchange(
             config,
             scout=scout or StubScoutAdapter(),
             router=router or StubRouterAdapter(),
             sentinel=sentinel or StubSentinelAdapter(),
-            bench=bench or StubBenchAdapter(),
+            bench=nested_bench,
             tclk=StubTclkAdapter(),
         )
         ensure_exchange_identity(wx_dir)
